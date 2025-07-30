@@ -1,29 +1,29 @@
 use std::num::NonZeroU16;
+use std::sync::Arc;
 
 use crate::config::WebhookConfig;
-use crate::handler::{Handler, HandlerError, TokenQuery};
+use crate::handler::{create_app, create_endpoint_state};
 use actix::dev::ToEnvelope;
 use actix::{Actor, Addr};
 use actix_web::http::KeepAlive;
 use actix_web::middleware::Logger;
-use actix_web::web::{Data, PayloadConfig, Query};
-use actix_web::{web, App, HttpServer, Responder, Scope};
-use chrono::prelude::Local;
+use actix_web::{App, HttpServer};
 use log::*;
-use tornado_collector_common::CollectorError;
-use tornado_collector_jmespath::JMESPathEventCollector;
+use opentelemetry::metrics::Meter;
 use tornado_common::actors::message::EventMessage;
 use tornado_common::actors::nats_publisher::NatsPublisherActor;
 use tornado_common::actors::tcp_client::TcpClientActor;
 use tornado_common::actors::TornadoConnectionChannel;
 use tornado_common::TornadoError;
-use tornado_common_api::{Event, TracedEvent};
 use tornado_common_logger::elastic_apm::DEFAULT_APM_SERVER_CREDENTIALS_FILENAME;
 use tornado_common_logger::setup_logger;
+use tornado_common_metrics::Metrics;
 use tracing_actix_web::TracingLogger;
 
 mod config;
 mod handler;
+
+const APP_NAME: &str = "tornado_webhook_collector";
 
 #[actix_web::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>> {
@@ -57,6 +57,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
 
     info!("Starting web server at port {}", port);
 
+    let metrics = Arc::new(Metrics::new(APP_NAME));
+    let meter = opentelemetry::global::meter(APP_NAME);
+
     //
     // WARN:
     // This 'if' block contains some duplicated code to allow temporary compatibility with the config file format of the previous release.
@@ -75,20 +78,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
             tornado_tcp_address,
             collector_config.webhook_collector.message_queue_size,
         );
-        start_http_server(actor_address, webhooks_config, bind_address, port, workers).await?;
+        start_http_server(
+            actor_address,
+            webhooks_config,
+            bind_address,
+            port,
+            workers,
+            metrics,
+            &meter,
+        )
+        .await?;
     } else if let Some(connection_channel) =
         collector_config.webhook_collector.tornado_connection_channel
     {
         match connection_channel {
             TornadoConnectionChannel::Nats { nats } => {
                 info!("Connect to Tornado through NATS");
-                let actor_address = NatsPublisherActor::start_new(
-                    nats,
-                    collector_config.webhook_collector.message_queue_size,
+                let actor_address = NatsPublisherActor::new(nats)
+                    .enable_metrics(&meter)
+                    .start(collector_config.webhook_collector.message_queue_size)
+                    .await?;
+                start_http_server(
+                    actor_address,
+                    webhooks_config,
+                    bind_address,
+                    port,
+                    workers,
+                    metrics,
+                    &meter,
                 )
                 .await?;
-                start_http_server(actor_address, webhooks_config, bind_address, port, workers)
-                    .await?;
             }
             TornadoConnectionChannel::Tcp { tcp_socket_ip, tcp_socket_port } => {
                 info!("Connect to Tornado through TCP socket");
@@ -99,8 +118,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
                     tornado_tcp_address,
                     collector_config.webhook_collector.message_queue_size,
                 );
-                start_http_server(actor_address, webhooks_config, bind_address, port, workers)
-                    .await?;
+                start_http_server(
+                    actor_address,
+                    webhooks_config,
+                    bind_address,
+                    port,
+                    workers,
+                    metrics,
+                    &meter,
+                )
+                .await?;
             }
         };
     } else {
@@ -113,100 +140,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>
     Ok(())
 }
 
-fn create_app<R: Fn(Event) + 'static, F: Fn() -> R>(
-    webhooks_config: Vec<WebhookConfig>,
-    factory: F,
-) -> Result<Scope, CollectorError> {
-    let mut scope = web::scope("");
-    scope = scope.service(web::resource("/ping").route(web::get().to(pong)));
-
-    for config in webhooks_config {
-        let id = config.id.clone();
-        let handler = handler::Handler {
-            id: config.id.clone(),
-            token: config.token,
-            collector: JMESPathEventCollector::build(config.collector_config).map_err(|err| {
-                CollectorError::CollectorCreationError {
-                    message: format!(
-                        "Cannot create collector for webhook with id [{}]. Err: {:?}",
-                        id, err
-                    ),
-                }
-            })?,
-            callback: factory(),
-        };
-
-        let path = format!("/event/{}", config.id);
-        debug!("Creating endpoint: [{}]", &path);
-
-        let new_scope = web::scope(&path)
-            .app_data(PayloadConfig::default().limit(config.max_payload_size.0 as usize))
-            .app_data(Data::new(handler))
-            .service(web::resource("").route(web::post().to(handle::<R>)));
-
-        scope = scope.service(new_scope);
-    }
-
-    Ok(scope)
-}
-
 async fn start_http_server<A: Actor + actix::Handler<EventMessage>>(
     actor_address: Addr<A>,
     webhooks_config: Vec<WebhookConfig>,
     bind_address: String,
     port: u32,
     workers: Option<NonZeroU16>,
+    metrics: Arc<Metrics>,
+    meter: &Meter,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync + 'static>>
 where
-    <A as Actor>::Context: ToEnvelope<A, tornado_common::actors::message::EventMessage>,
+    <A as Actor>::Context: ToEnvelope<A, EventMessage>,
 {
+    let endpoints = create_endpoint_state(webhooks_config, meter, actor_address)?;
+
     let mut srv = HttpServer::new(move || {
         App::new()
             .wrap(Logger::default())
             .wrap(TracingLogger::default())
-            .service(
-            create_app(webhooks_config.clone(), || {
-                let clone = actor_address.clone();
-                move |event| clone.try_send(EventMessage(TracedEvent { event, span: tracing::Span::current() })).unwrap_or_else(|err| error!("WebhookCollector -  Error while sending EventMessage to TornadoConnectionChannel actor. Error: {}", err))
-            })
-            // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-            .unwrap_or_else(|err| {
-                error!("Cannot create the webhook handlers. Err: {:?}", err);
-                std::process::exit(1);
-            }),
-        )
+            .service(create_app(endpoints.clone(), metrics.clone()))
     })
-    .keep_alive(KeepAlive::Disabled)
-    .bind(format!("{}:{}", bind_address, port))
-    // here we are forced to unwrap by the Actix API. See: https://github.com/actix/actix/issues/203
-    .unwrap_or_else(|err| {
-        error!("Server cannot start on port {}. Err: {:?}", port, err);
-        std::process::exit(1);
-    });
+    .keep_alive(KeepAlive::Disabled);
 
     if let Some(workers) = workers {
         info!("Setting up {} workers", workers);
         srv = srv.workers(workers.get() as usize);
     }
 
-    srv.run().await?;
+    srv.bind(format!("{}:{}", bind_address, port))?.run().await?;
 
     Ok(())
-}
-
-async fn pong() -> impl Responder {
-    let dt = Local::now(); // e.g. `2014-11-28T21:45:59.324310806+09:00`
-    let created_ms: String = dt.to_rfc3339();
-    format!("pong - {}", created_ms)
-}
-
-async fn handle<F: Fn(Event) + 'static>(
-    body: String,
-    query: Query<TokenQuery>,
-    handler: Data<Handler<F>>,
-) -> Result<String, HandlerError> {
-    let received_token = &query.token;
-    handler.handle(&body, received_token)
 }
 
 #[cfg(test)]
@@ -218,7 +181,6 @@ mod test {
     use actix_web::{http, test};
     use human_units::Size;
     use std::collections::HashMap;
-    use std::sync::{Arc, Mutex};
     use tornado_collector_jmespath::config::JMESPathEventCollectorConfig;
 
     fn test_webhook_config() -> WebhookConfig {
@@ -233,11 +195,20 @@ mod test {
         }
     }
 
+    macro_rules! init_test_service {
+        ($config:expr) => {{
+            let addr =
+                actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
+            let endpoints = create_endpoint_state($config, addr).unwrap();
+            let metrics = Arc::new(Metrics::new("app_name"));
+            test::init_service(App::new().service(create_app(endpoints, metrics))).await
+        }};
+    }
+
     #[actix_rt::test]
     async fn ping_should_return_pong() {
         // Arrange
-        let srv =
-            test::init_service(App::new().service(create_app(vec![], || |_| {}).unwrap())).await;
+        let srv = init_test_service!(vec![]);
 
         // Act
         let request = test::TestRequest::get().uri("/ping").to_request();
@@ -254,7 +225,7 @@ mod test {
     async fn should_create_a_path_per_webhook() {
         // Arrange
         let webhooks_config = vec![
-            WebhookConfig { ..test_webhook_config() },
+            test_webhook_config(),
             WebhookConfig {
                 id: "hook_2".to_owned(),
                 token: "hook_2_token".to_owned(),
@@ -265,10 +236,7 @@ mod test {
                 ..test_webhook_config()
             },
         ];
-        let srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
-        )
-        .await;
+        let srv = init_test_service!(webhooks_config);
 
         // Act
         let request_1 = test::TestRequest::post()
@@ -297,7 +265,7 @@ mod test {
     async fn should_accept_calls_only_if_token_matches() {
         // Arrange
         let webhooks_config = vec![
-            WebhookConfig { ..test_webhook_config() },
+            test_webhook_config(),
             WebhookConfig {
                 id: "hook_2".to_owned(),
                 token: "hook_2_token".to_owned(),
@@ -308,10 +276,8 @@ mod test {
                 ..test_webhook_config()
             },
         ];
-        let srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
-        )
-        .await;
+
+        let srv = init_test_service!(webhooks_config);
 
         // Act
         let request_1 = test::TestRequest::post()
@@ -334,65 +300,11 @@ mod test {
     }
 
     #[actix_rt::test]
-    async fn should_call_the_callback_on_each_event() {
-        // Arrange
-        let webhooks_config = vec![WebhookConfig {
-            collector_config: JMESPathEventCollectorConfig {
-                event_type: "${map.first}".to_owned(),
-                payload: HashMap::new(),
-            },
-            ..test_webhook_config()
-        }];
-
-        let event = Arc::new(Mutex::new(None));
-        let event_clone = event.clone();
-
-        let srv = test::init_service(
-            App::new().service(
-                create_app(webhooks_config.clone(), || {
-                    let clone = event.clone();
-                    move |evt| {
-                        let mut wrapper = clone.lock().unwrap();
-                        *wrapper = Some(evt)
-                    }
-                })
-                .unwrap(),
-            ),
-        )
-        .await;
-
-        // Act
-        let request_1 = test::TestRequest::post()
-            .uri("/event/hook_1?token=hook_1_token")
-            .insert_header((http::header::CONTENT_TYPE, "application/json"))
-            .set_payload(
-                r#"{
-                    "map" : {
-                        "first": "webhook_event"
-                    }
-                }"#,
-            )
-            .to_request();
-        let response_1 = test::call_and_read_body(&srv, request_1).await;
-
-        // Assert
-        let body_1 = std::str::from_utf8(&response_1).unwrap();
-        assert_eq!("hook_1", body_1);
-
-        let value = event_clone.lock().unwrap();
-        assert_eq!("webhook_event", value.as_ref().unwrap().event_type)
-    }
-
-    #[actix_rt::test]
     async fn should_return_404_if_hook_does_not_exists() {
         // Arrange
         let webhooks_config =
             vec![WebhookConfig { id: "hook_1".to_owned(), ..test_webhook_config() }];
-
-        let srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
-        )
-        .await;
+        let srv = init_test_service!(webhooks_config);
 
         // Act
         let request = test::TestRequest::post()
@@ -411,11 +323,7 @@ mod test {
         // Arrange
         let webhooks_config =
             vec![WebhookConfig { id: "hook_1".to_owned(), ..test_webhook_config() }];
-
-        let srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
-        )
-        .await;
+        let srv = init_test_service!(webhooks_config);
 
         // Act
         let request = test::TestRequest::get()
@@ -436,11 +344,7 @@ mod test {
             token: "token&#?=".to_owned(),
             ..test_webhook_config()
         }];
-
-        let srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
-        )
-        .await;
+        let srv = init_test_service!(webhooks_config);
 
         // Act
         let request = test::TestRequest::post()
@@ -457,25 +361,20 @@ mod test {
     #[actix_rt::test]
     async fn should_refuse_large_payload() {
         // Arrange
-        let mut webhooks_config = vec![];
-
-        webhooks_config.push(WebhookConfig {
-            id: "limit_payload".to_owned(),
-            token: "123".to_owned(),
-            max_payload_size: Size(1024 * 512), // 512 KB
-            ..test_webhook_config()
-        });
-
-        webhooks_config.push(WebhookConfig {
-            id: "default_payload".to_owned(),
-            token: "123".to_owned(),
-            ..test_webhook_config()
-        });
-
-        let mut srv = test::init_service(
-            App::new().service(create_app(webhooks_config.clone(), || |_| {}).unwrap()),
-        )
-        .await;
+        let webhooks_config = vec![
+            WebhookConfig {
+                id: "limit_payload".to_owned(),
+                token: "123".to_owned(),
+                max_payload_size: Size(1024 * 512), // 512 KB
+                ..test_webhook_config()
+            },
+            WebhookConfig {
+                id: "default_payload".to_owned(),
+                token: "123".to_owned(),
+                ..test_webhook_config()
+            },
+        ];
+        let srv = init_test_service!(webhooks_config);
 
         let json = vec![b'{', b'}'];
         let payload_1kb = [vec![b' '; 1024], json.clone()].concat();
@@ -488,28 +387,28 @@ mod test {
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload(payload_1kb)
             .to_request();
-        let response_in_limit = test::call_service(&mut srv, request).await;
+        let response_in_limit = test::call_service(&srv, request).await;
 
         let request = test::TestRequest::post()
             .uri("/event/limit_payload?token=123")
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload(payload_1mb.clone())
             .to_request();
-        let response_over_limit = test::call_service(&mut srv, request).await;
+        let response_over_limit = test::call_service(&srv, request).await;
 
         let request = test::TestRequest::post()
             .uri("/event/default_payload?token=123")
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload(payload_1mb)
             .to_request();
-        let response_in_default_limit = test::call_service(&mut srv, request).await;
+        let response_in_default_limit = test::call_service(&srv, request).await;
 
         let request = test::TestRequest::post()
             .uri("/event/default_payload?token=123")
             .insert_header((http::header::CONTENT_TYPE, "application/json"))
             .set_payload(payload_10mb)
             .to_request();
-        let response_over_default_limit = test::call_service(&mut srv, request).await;
+        let response_over_default_limit = test::call_service(&srv, request).await;
 
         // Assert
         assert_eq!(http::StatusCode::OK, response_in_limit.status());

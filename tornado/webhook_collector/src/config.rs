@@ -94,7 +94,7 @@ pub(crate) fn default_webhook_config_max_payload_size() -> Size {
     Size(5242880)
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct WebhookConfig {
     pub id: String,
     pub token: String,

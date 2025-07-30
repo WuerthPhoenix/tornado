@@ -3,6 +3,7 @@ use crate::TornadoError;
 use actix::prelude::*;
 use async_nats::{Connection, Options};
 use log::*;
+use opentelemetry::metrics::{Counter, Meter};
 use opentelemetry::trace::SpanKind;
 use serde::{Deserialize, Serialize};
 use std::io::Error;
@@ -21,6 +22,23 @@ pub struct NatsPublisherActor {
     nats_connection: Rc<Option<Connection>>,
     restarted: bool,
     trace_context_propagator: TraceContextPropagator,
+    metrics: Option<NatsMetrics>,
+}
+
+struct NatsMetrics {
+    bytes_sent: Counter<u64>,
+    send_failed: Counter<u64>,
+    reconnect_attempts: Counter<u64>,
+}
+
+impl NatsMetrics {
+    fn new(meter: &Meter) -> Self {
+        NatsMetrics {
+            bytes_sent: meter.u64_counter("nats_bytes_sent").init(),
+            send_failed: meter.u64_counter("nats_send_failed").init(),
+            reconnect_attempts: meter.u64_counter("nats_reconnect_attempts").init(),
+        }
+    }
 }
 
 impl actix::io::WriteHandler<Error> for NatsPublisherActor {}
@@ -95,16 +113,33 @@ impl NatsPublisherActor {
         config: NatsPublisherConfig,
         message_mailbox_capacity: usize,
     ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
+        Self::new(config).start(message_mailbox_capacity).await
+    }
+
+    pub fn new(config: NatsPublisherConfig) -> Self {
         let trace_context_propagator = TraceContextPropagator::new();
+        NatsPublisherActor {
+            config,
+            nats_connection: Rc::new(None),
+            restarted: false,
+            trace_context_propagator,
+            metrics: None,
+        }
+    }
+
+    pub async fn start(
+        self,
+        message_mailbox_capacity: usize,
+    ) -> Result<Addr<NatsPublisherActor>, TornadoError> {
         Ok(actix::Supervisor::start(move |ctx: &mut Context<NatsPublisherActor>| {
             ctx.set_mailbox_capacity(message_mailbox_capacity);
-            NatsPublisherActor {
-                config,
-                nats_connection: Rc::new(None),
-                restarted: false,
-                trace_context_propagator,
-            }
+            self
         }))
+    }
+
+    pub fn enable_metrics(mut self, meter: &Meter) -> Self {
+        self.metrics = Some(NatsMetrics::new(meter));
+        self
     }
 }
 
@@ -120,6 +155,9 @@ impl Actor for NatsPublisherActor {
         let client_config = self.config.client.clone();
         let nats_connection = self.nats_connection.clone();
         let restarted = self.restarted;
+        if let Some(metrics) = &self.metrics {
+            metrics.reconnect_attempts.add(1, &[]);
+        }
         ctx.wait(
             async move {
                 if restarted {
@@ -196,6 +234,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
             let event = serde_json::to_vec(&msg.0.event).map_err(|err| {
                 TornadoCommonActorError::SerdeError { message: format! {"{}", err} }
             })?;
+            let event_len = event.len();
 
             let client = connection.clone();
             let config = self.config.clone();
@@ -218,7 +257,13 @@ impl Handler<EventMessage> for NatsPublisherActor {
                 .instrument(span.exit())
                 .into_actor(self)
             );
+            if let Some(metrics) = &self.metrics {
+                metrics.bytes_sent.add(event_len as u64, &[]);
+            }
         } else {
+            if let Some(metrics) = &self.metrics {
+                metrics.send_failed.add(1, &[]);
+            }
             warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Stopping actor and reprocessing the event ...");
             ctx.stop();
             address.try_send(msg).unwrap_or_else(|err| {
