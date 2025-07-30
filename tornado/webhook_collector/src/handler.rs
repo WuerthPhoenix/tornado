@@ -178,6 +178,7 @@ where
     state.metrics.bytes_received.add(body.len() as u64, metric_attrs);
 
     if !(state.token.eq(received_token)) {
+        state.metrics.webhooks_failed.add(1, metric_attrs);
         error!("Endpoint [{}] - Token is not valid: [{}]", state.id, received_token);
         return Err(HandlerError::WrongTokenError);
     }
