@@ -175,7 +175,7 @@ impl Handler<EventMessage> for NatsPublisherActor {
         let _parent_span = msg.0.span.clone().entered();
         // Hardcode the service.name of the receiver. Currenlty publishers only publish to tornado.
         // Implementing the logic to have this not hardcoded is not worth the effort atm.
-        let span = tracing::info_span!("Send Event to NATS", trace_id = tracing::field::Empty, 
+        let span = tracing::info_span!("Send Event to NATS", trace_id = tracing::field::Empty,
             otel.name = format!("Send Event to NATS subject: {}", &self.config.subject).as_str(),
             otel.kind = %SpanKind::Producer,
             peer.service = "tornado")
@@ -200,20 +200,24 @@ impl Handler<EventMessage> for NatsPublisherActor {
             let client = connection.clone();
             let config = self.config.clone();
 
-            actix::spawn(async move {
-                debug!("NatsPublisherActor - Publishing event to NATS");
-                match client.publish(&config.subject, &event).await {
-                    Ok(_) => trace!(
-                        "NatsPublisherActor - Publish event to NATS succeeded. Event: {:?}",
-                        &msg
-                    ),
-                    Err(e) => {
-                        error!("NatsPublisherActor - Error sending event to NATS. Err: {:?}", e);
-                        time::sleep(time::Duration::from_secs(1)).await;
-                        address.try_send(msg).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending event to itself. Error: {}", err));
+            ctx.wait(
+                async move {
+                    debug!("NatsPublisherActor - Publishing event to NATS");
+                    match client.publish(&config.subject, &event).await {
+                        Ok(_) => trace!(
+                            "NatsPublisherActor - Publish event to NATS succeeded. Event: {:?}",
+                            &msg
+                        ),
+                        Err(e) => {
+                            error!("NatsPublisherActor - Error sending event to NATS. Err: {:?}", e);
+                            time::sleep(time::Duration::from_secs(1)).await;
+                            address.try_send(msg).unwrap_or_else(|err| error!("NatsPublisherActor -  Error while sending event to itself. Error: {}", err));
+                        }
                     }
                 }
-            }.instrument(span.exit()));
+                .instrument(span.exit())
+                .into_actor(self)
+            );
         } else {
             warn!("NatsPublisherActor - Processing event but NATS connection not yet established. Stopping actor and reprocessing the event ...");
             ctx.stop();
