@@ -199,7 +199,8 @@ mod test {
         ($config:expr) => {{
             let addr =
                 actix::actors::mocker::Mocker::<EventMessage>::mock(Box::new(|b, _| b)).start();
-            let endpoints = create_endpoint_state($config, addr).unwrap();
+            let meter = opentelemetry::global::meter(APP_NAME);
+            let endpoints = create_endpoint_state($config, &meter, addr).unwrap();
             let metrics = Arc::new(Metrics::new("app_name"));
             test::init_service(App::new().service(create_app(endpoints, metrics))).await
         }};
