@@ -20,7 +20,7 @@ optional = true
 
 [dev-dependencies]
 actix-rt = "2.2"
-rand = "0.8"
+rand = "0.9"
 
 tokio.workspace = true
 
