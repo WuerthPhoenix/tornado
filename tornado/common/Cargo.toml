@@ -37,7 +37,7 @@ actix-rt = "2.2"
 once_cell = "1.8"
 opentelemetry-prometheus = "0.9"
 port_check = "0.1"
-rand = "0.8"
+rand = "0.9"
 serial_test = "*"
 testcontainers = "0.12"
 
